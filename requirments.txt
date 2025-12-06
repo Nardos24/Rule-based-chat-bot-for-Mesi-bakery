@@ -1,0 +1,2 @@
+python-telegram-bot==20.3
+langdetect==1.0.9
