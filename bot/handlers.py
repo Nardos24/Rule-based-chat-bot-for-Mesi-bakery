@@ -10,9 +10,14 @@ from telegram.ext import (
 )
 
 from keyboards import (
+    language_menu,
     main_menu,
     to_order_menu,
     injera_menu,
+    white_injera_menu,
+    black_injera_menu,
+    hay_injera_menu,    
+    normal_injera_menu,
     bread_menu,
     white_bread_menu,
     wheat_bread_menu,
@@ -24,7 +29,7 @@ from keyboards import (
     nech_shiro_menu,
     quantity_menu,
     pepper_menu,
-    chilliPepper_menu
+    chillipepper_menu
 )
 from lang_det import detect_language
 
@@ -35,6 +40,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "Please select your language / ቋንቋ ይምረጡ",
+        reply_markup=language_menu()
+    )
+
     text = update.message.text or ""
     lang = detect_language(text)
     context.user_data["lang"] = lang
@@ -57,8 +67,27 @@ async def callback_handler(update: Update, context: CallbackContext):
     data = query.data
     user_id = query.from_user.id
     lang = context.user_data.get("lang", "en")
+    
+    if user_id not in user_state:
+        user_state[user_id] = {"category": None, "item": None}
 
     # Main categories 
+    if data == "lang_en":
+        context.user_data["lang"] = "en"
+        await query.edit_message_text(
+            "Welcome to Mesi Bakery Bot!",
+            reply_markup=main_menu("en")
+        )
+        return
+
+    if data == "lang_am":
+        context.user_data["lang"] = "am"
+        await query.edit_message_text(
+            "እንኳን ወደ መሲ ባህላዊ ዳቦ እና እንጀራ ቦት በደህና መጡ!",
+            reply_markup=main_menu("am")
+        )
+        return
+
     if data == "to_order":
         await query.edit_message_text(
             "Select a category to order from:" if lang=="en" else "እባክዎ ለትዕዛዝ ምድብ ይምረጡ:",
@@ -78,41 +107,67 @@ async def callback_handler(update: Update, context: CallbackContext):
     if data in ["bread", "injera", "baltena", "doro_wot", "agelgel"]:
         user_state[user_id] = {"category": data, "item": None}
         menu_map = {
-            "bread": bread_menu(lang),
-            "injera": injera_menu(lang),
-            "baltena": baltena_menu(lang),
-            "doro_wot": doro_wot_menu(lang),
-            "agelgel": agelgel_menu(lang)
-        }
+            "bread": bread_menu,
+            "injera": injera_menu,
+            "baltena": baltena_menu,
+            "doro_wot": doro_wot_menu,
+            "agelgel": agelgel_menu
+}
+
         text_map = {
             "bread": "Choose your bread type:" if lang=="en" else "የዳቦ ዓይነት ይምረጡ:",
             "injera": "Choose type of Injera:" if lang=="en" else "የእንጀራ ዓይነት ይምረጡ:",
             "baltena": "Choose Baltena item:" if lang=="en" else "የባልትና ዓይነት ይምረጡ:",
-            "doro_wot": "How many chickens do you want:" if lang=="en" else "የሚፈልጉትን የዶሮ ብዛት ያስገቡ:",
-            "agelgel": "How many portions do you want:" if lang=="en" else "እባክዎ የሚፈልጉትን ብዛት ያስገቡ:"
-        }
-        await query.edit_message_text(text_map[data], reply_markup=menu_map[data])
+            "doro_wot": "🍗 Doro Wot — prepared fresh with traditional Ethiopian spices. enter the amount of chickens you want:" if lang=="en" else "🍗 ዶሮ ወጥ - በባህላዊ ቅመም የተዘጋጀ። እባክዎ የሚፈልጉትን የዶሮ መጠን ያስገቡ",
+            "agelgel": "How many agelgel do you want:" if lang=="en" else "እባክዎ የሚፈልጉትን ብዛት ያስገቡ:"
+        }    
+        menu_text = text_map[data]
+        menu_keyboard = menu_map[data](lang)
+        await query.edit_message_text(menu_text, reply_markup=menu_keyboard)
         return
 
-    # Bread types
-    if data.startswith("bread_"):
-        bread_type = data.replace("bread_", "")
-        user_state[user_id]["item"] = bread_type
-        if bread_type == "white":
-            await query.edit_message_text(
-                "Select KG of bread:" if lang=="en" else "የዳቦ ኪ.ግ ይምረጡ:",
-                reply_markup=white_bread_menu(lang)
-            )
-        elif bread_type == "wheat":
-            await query.edit_message_text(
-                "Select KG of bread:" if lang=="en" else "የዳቦ ኪ.ግ ይምረጡ:",
-                reply_markup=wheat_bread_menu(lang)
-            )
+    
+    if data == "bread_white":
+        user_state[user_id]["item"] = "white_bread"
+        await query.edit_message_text(
+            "Select KG:",
+            reply_markup=white_bread_menu(lang)
+        )
         return
+
+    if data == "bread_wheat":
+        user_state[user_id]["item"] = "wheat_bread"
+        await query.edit_message_text(
+            "Select KG:",
+            reply_markup=wheat_bread_menu(lang)
+        )
+        return
+
+    if data == "injera_white":
+        await query.edit_message_text(
+            "Choose Injera type:",
+            reply_markup=white_injera_menu(lang)
+        )
+        return
+
+    if data == "injera_black":
+        await query.edit_message_text(
+            "Choose Injera type:",
+            reply_markup=black_injera_menu(lang)
+        )
+        return
+
+    if data == "injera_both":
+        await query.edit_message_text(
+            "Choose Injera type:",
+            reply_markup=white_injera_menu(lang)
+        )
+        return
+
 
     # KG selection
     if data == "kg_other":
-        await query.edit_message_text("Enter the amount in KG:" if lang=="en" else "እባክዎ መጠኑን በኪ.ግ ያስገቡ:")
+        await query.edit_message_text("Enter the amount in KG (e.g., 5, 6,...)::" if lang=="en" else "እባክዎ መጠኑን በኪ.ግ ያስገቡ (ለምሳሌ: 5, 6,...):")
         context.user_data["awaiting_kg"] = True
         return
 
@@ -132,32 +187,26 @@ async def callback_handler(update: Update, context: CallbackContext):
             )
         return
 
-    if data.startswith("agelgel_") or data.startswith("doro_wot_"):
-        item_name = data.split("_", 1)[1]
-        user_state[user_id]["item"] = item_name
+    if data == "doro_confirm" or data == "other_amount":
         await query.edit_message_text(
-            "How many do you want?" if lang=="en" else "እባክዎ ብዛት ያስገቡ:"
+            "Please enter the amount you want ?" if lang=="en" else "እባክዎ ብዛት ያስገቡ:"
         )
+        context.user_data["awaiting_qty"] = True
+        return
+    if data.startswith("agelgel_"):
+        user_state[user_id]["item"] = data
+        await query.edit_message_text("Enter quantity:")
         context.user_data["awaiting_qty"] = True
         return
 
     # Baltena items
-    if data in ["baltena_pepper", "baltena_chilliPepper", "baltena_shiro"]:
-        item_name = data.replace("baltena_", "")
-        user_state[user_id]["item"] = item_name
-        if data == "baltena_shiro":
+    if data == "shiro":
             await query.edit_message_text(
                 "Choose shiro type:" if lang=="en" else "የሽሮ ዓይነት ይምረጡ:",
                 reply_markup=Shiro_menu(lang)
             )
-        else:
-            await query.edit_message_text(
-                "Enter amount in KG (e.g., 5, 6,...):" if lang=="en" else "እባክዎ በኪ.ግ ያስገቡ (ለምሳሌ: 5, 6,...):"
-            )
-            context.user_data["awaiting_kg"] = True
-        return
-
-    if data in ["keey_shiro", "white_shiro"]:
+            return
+    if data in ["keey_shiro", "white_shiro", "hay_injera", "pepper", "chillipepper"]:
         user_state[user_id]["item"] = data
         await query.edit_message_text(
             "Choose in KG:" if lang=="en" else "እባክዎ በኪ.ግ ይምረጡ"
@@ -165,21 +214,6 @@ async def callback_handler(update: Update, context: CallbackContext):
         context.user_data["awaiting_kg"] = True
         return
 
-    if data == "baletna_pepper":
-        user_state[user_id]["item"] = "pepper"
-        await query.edit_message_text(
-            "Choose in KG:" if lang=="en" else "እባክዎ በኪ.ግ ይምረጡ",
-            reply_markup=pepper_menu(lang)
-        )
-        return
-
-    if data == "baletna_chilliPepper":
-        user_state[user_id]["item"] = "peppercorn"
-        await query.edit_message_text(
-            "Choose in KG:" if lang=="en" else "እባክዎ በኪ.ግ ይምረጡ"
-        )
-        context.user_data["awaiting_kg"] = True
-        return
 
     if data.startswith("qty_") and user_state.get(user_id):
         if data == "qty_other":
@@ -200,15 +234,36 @@ async def callback_handler(update: Update, context: CallbackContext):
         context.user_data.pop("selected_kg", None)
         context.user_data.pop("awaiting_qty", None)
         return
+    if data == "back_to_main":
+        await query.edit_message_text(
+            "Main Menu:" if lang=="en" else "ዋና ምድብ:",
+            reply_markup=main_menu(lang)
+        )
+        return
+    if data == "back_to_item":
+        category = user_state[user_id]["category"]
+        menu_map = {
+            "bread": bread_menu,
+            "injera": injera_menu,
+            "baltena": baltena_menu,
+            "doro_wot": doro_wot_menu,
+            "agelgel": agelgel_menu
+        }
+        await query.edit_message_text(
+            "Select an item:" if lang=="en" else "እባክዎ ንጥል ይምረጡ:",
+            reply_markup=menu_map[category](lang)
+        )
+        return
 
 def text_handler(update: Update, context: CallbackContext):
     user_id = update.message.from_user.id
 
     if context.user_data.get("awaiting_kg"):
         category = user_state[user_id]["category"]
-        if category != "bread" and category not in ["baltena", "pepper", "chilliPepper", "shiro", "keey_shiro", "white_shiro"]:
+        if category not in ["bread", "baltena", "injera"]:
             context.user_data["awaiting_kg"] = False
             return
+
 
         try:
             kg = float(update.message.text)
